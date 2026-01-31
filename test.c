@@ -105,7 +105,6 @@ int main() {
 				setKeyRGB(i,colors[0],colors[1],colors[2]);
 				wasPressed[i] = false;
 			}
-end_of_loop:
 		}
 	}
 }
