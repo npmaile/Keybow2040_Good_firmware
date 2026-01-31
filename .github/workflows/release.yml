@@ -25,5 +25,6 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: 2040fw.uf2
+          tag_name: latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
