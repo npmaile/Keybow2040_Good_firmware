@@ -16,7 +16,7 @@ jobs:
       
       - name: Extract binary
         run: |
-          docker create --name temp-container my-project:latest
+          docker create --name temp-container 2040fw:latest
           docker cp temp-container:/root/test.uf2 ./2040fw.uf2
           docker rm temp-container
       
