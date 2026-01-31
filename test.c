@@ -95,7 +95,6 @@ int main() {
 			case 12:
 
 				break;
-			default:
 			}
 				Add_key_input(i);
 				setKeyRGB(i,255,255,255);
