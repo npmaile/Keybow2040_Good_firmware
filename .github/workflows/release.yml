@@ -1,0 +1,28 @@
+name: Build and Release
+
+on:
+  push:
+    branch:
+      - "main"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Build Docker image
+        run: docker build -t 2040fw:latest .
+      
+      - name: Extract binary
+        run: |
+          docker create --name temp-container my-project:latest
+          docker cp temp-container:/root/test.uf2 ./2040fw.uf2
+          docker rm temp-container
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: 2040fw.uf2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
