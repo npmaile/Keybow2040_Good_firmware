@@ -1,4 +1,4 @@
-#Keybow2040_Good_firmware
+# Keybow2040_Good_firmware
 
 This is firmware I thought the device desparately needed after attempting to make a useable numpad/arrow macropad with the python implementation that comes with the device.
 
