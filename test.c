@@ -1,15 +1,12 @@
 #include <stdio.h>
-
 #include "pico/stdlib.h"
 #include "pico/rand.h"
-
 #include "hardware/gpio.h"
-
 #include "bsp/board_api.h"
 #include "tusb.h"
+
 #include "usb_descriptors.h"
 #include "keyinput.h"
-
 #include "led.h"
 
 static uint8_t keysAndGPIO[16] = {
