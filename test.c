@@ -1,13 +1,29 @@
 #include <stdio.h>
+#include "pico/double.h"
 #include "pico/stdlib.h"
 #include "pico/rand.h"
+#include "pico/time.h"
 #include "hardware/gpio.h"
 #include "bsp/board_api.h"
 #include "tusb.h"
 
 #include "usb_descriptors.h"
-#include "keyinput.h"
 #include "led.h"
+
+void mouse_jiggler_task();
+void keyboard_task();
+int8_t Squash32bit(int32_t in);
+void setup_mouse_jiggler();
+void setup_mouse_func();
+void mouse_task();
+void (*mouseShapeFunc)(int32_t in[2], double t);
+void circleFunc(int32_t in[2],double t);
+void butterflyFunc(int32_t in[2],double t);
+void heartFunc(int32_t in[2],double t);
+
+#define E_CONST 2.71828182845904523536
+#define PI_CONST 3.1415926
+
 
 static uint8_t keysAndGPIO[16] = {
 	18,14,10,6,
@@ -55,6 +71,222 @@ static bool wasPressed[16] = {
 	false,false,false,false
 };
 
+void (*ktask)(void);
+
+void setup_keyboard_task1(){
+	memcpy(active_keymap,keymap1,16);
+	memcpy(active_lights,mode1Lights,16 * 3);
+	push_bitmap(mode1Lights);
+	ktask = &keyboard_task;
+}
+
+void setup_keyboard_task2(){
+	memcpy(active_keymap,keymap2,16);
+	memcpy(active_lights,mode2Lights,16 * 3);
+	push_bitmap(mode2Lights);
+	ktask = &keyboard_task;
+}
+
+void keyboard_task(){
+	for (uint8_t i = 0; i < 16; i++){
+		bool isPressed = !gpio_get(keysAndGPIO[i]);
+			
+		if (isPressed){
+			switch (i){
+			case 0:
+				setup_keyboard_task1();
+				return;
+			case 4:
+				setup_keyboard_task2();
+				return;
+			case 8:
+				setup_mouse_jiggler();
+				return;
+			case 12:
+
+				break;
+			}
+			Add_Key_Input(active_keymap[i]);
+			setKeyRGB(i,255,255,255);
+			wasPressed[i] = true;
+		}else if (!isPressed && wasPressed[i]) {
+			uint8_t *colors = active_lights[i];
+			setKeyRGB(i,colors[0],colors[1],colors[2]);
+			wasPressed[i] = false;
+		}
+	}
+
+}
+
+void setup_mouse_func(){
+	push_bitmap(mode2Lights);
+	ktask = &mouse_task;
+}
+
+bool keyPressed(int8_t key){
+	return !gpio_get(keysAndGPIO[key]);
+}
+
+uint64_t t_0 = 0;
+double current_dir_radians = 0;
+double speed = 0;
+void mouse_task(){
+	uint64_t t_1 =  to_us_since_boot(get_absolute_time());
+	if ((t_1 - t_0) < 10000){
+		return;
+	}
+	t_0 = t_1;
+	// key handling
+	if (keyPressed(0)) {
+		setup_keyboard_task1();
+		return;
+	}
+	if (keyPressed(4)){
+		setup_keyboard_task2();
+		return;
+	}
+	if (keyPressed(8)){
+		setup_mouse_jiggler();
+		return;
+	}
+	if (keyPressed(10)&& speed < 128){
+		speed += .1 ;
+	}
+	if (keyPressed(13)){
+		current_dir_radians += .01*PI_CONST;
+	}
+	if (keyPressed(14) && speed > -128){
+		speed -= .1;
+	}
+	if (keyPressed(15)){
+		current_dir_radians -= .01*PI_CONST;
+	}
+	// mouse input
+	int8_t delta_x = floor(sin(current_dir_radians) * speed *.2);
+	int8_t delta_y = floor(cos(current_dir_radians) * speed)*.2;
+	Add_Mouse_Input(Squash32bit(delta_x),Squash32bit(delta_y));
+	// lights
+	uint64_t t_2 =  to_us_since_boot(get_absolute_time())/ 100000;
+	uint8_t arrowKeys[4] = {15,14,13,10};
+	for (uint8_t i = 0; i < 4; i ++){
+		uint8_t r = floor(255 * sin(t_2+(i * .01)));
+		uint8_t g = floor(255 * sin(t_2+(i * .80)));
+		uint8_t b = floor(255 * sin(t_2+(i * .50)));
+		setKeyRGB(arrowKeys[i],r,g,b);
+	}
+}
+
+void setup_mouse_jiggler(){
+	ktask = &mouse_jiggler_task;
+	mouseShapeFunc = &circleFunc;
+}
+
+double SCALING_FACTOR = 300;
+double TIME_SLOW_FACTOR = 100000;
+void mouse_jiggler_task(){
+	uint64_t t_1 =  to_us_since_boot(get_absolute_time());
+	if ((t_1 - t_0) < 10000){
+		return;
+	}
+	t_0 = t_1;
+	static int32_t mouse_x = 0;
+	static int32_t mouse_y = 0;
+
+	for (uint8_t i = 0; i < 16; i++){
+		bool isPressed = !gpio_get(keysAndGPIO[i]);
+		if (!isPressed){
+			continue;
+		}
+		switch(i){
+		case 0:
+			setup_keyboard_task1();
+			return;
+		case 1:
+			SCALING_FACTOR --;
+			break;
+		case 2: 
+			SCALING_FACTOR = 300;
+			break;
+		case 3: 
+			SCALING_FACTOR ++;
+			break;
+		case 4:
+			setup_keyboard_task2();
+			return;
+		case 5:
+			TIME_SLOW_FACTOR = TIME_SLOW_FACTOR + 100;
+			return;
+		case 6:
+			TIME_SLOW_FACTOR = 100000;
+			return;
+		case 7:
+			TIME_SLOW_FACTOR = TIME_SLOW_FACTOR - 100;
+			return;
+		case 8:
+			mouseShapeFunc = &circleFunc;
+			break;
+		case 9:
+			mouseShapeFunc = &butterflyFunc;
+			break;
+		case 10:
+			setup_mouse_func();
+			return;
+		case 11:
+			mouseShapeFunc = &heartFunc;
+			break;
+		case 12:
+			break;
+		case 13:
+			setup_mouse_func();
+			break;
+		case 14:
+			setup_mouse_func();
+			break;
+		case 15:
+			setup_mouse_func();
+			break;
+		default:
+			// also do nothing
+			break;
+		}
+	}
+	double t = t_1 / TIME_SLOW_FACTOR;
+	for (uint8_t i = 0; i < 16; i++){
+		uint8_t r = floor(255 * sin(t+(i * .01)));
+		uint8_t g = floor(255 * sin(t+(i * .80)));
+		uint8_t b = floor(255 * sin(t+(i * .50)));
+
+		setKeyRGB(i,r,b,g);
+	}
+
+	int32_t xy[2] = {0};
+	mouseShapeFunc(xy, t);
+	int32_t delta_x = Squash32bit(mouse_x - xy[0]);
+	int32_t delta_y = Squash32bit(mouse_y - xy[1]);
+	
+	Add_Mouse_Input(delta_x,delta_y);
+	mouse_x -= delta_x;
+	mouse_y -= delta_y;
+}
+
+void butterflyFunc(int32_t in[2], double t){
+	in[0] = floor((sin(t) * (pow(E_CONST,cos(t)) - 2 * cos(4 * t) - pow(sin(t/12),5))) * SCALING_FACTOR * .1);
+	in[1] = floor((cos(t) * (pow(E_CONST,cos(t)) - 2 * cos(4 * t) - pow(sin(t/12),5))) * SCALING_FACTOR * .1);
+}
+void heartFunc(int32_t in[2], double t){
+	in[0] = floor((16 * pow(sin(t), 3.0)) * SCALING_FACTOR * .1);
+	in[1] = floor((13 * cos(t) - 5 * cos(2 *t) - 2 * cos(3* t) - cos(4 * t)) * SCALING_FACTOR * .1);
+}
+
+void circleFunc(int32_t in[2],double t){
+	in[0] = floor(sin(t) * SCALING_FACTOR);
+	in[1] = floor(cos(t) * SCALING_FACTOR);
+}
+
+int8_t Squash32bit(int32_t in){
+	return (in > 127)?127:(in<-127)?-127:(int8_t)in;
+}
+
 int main() {
 	stdio_init_all();
 	led_driver_init();
@@ -66,74 +298,13 @@ int main() {
 		setPixel(i,0,0);
 	}
 	memcpy(active_keymap,keymap1,16);
-
 	push_bitmap(mode1Lights);
+	ktask = &keyboard_task;
 	while (true) {
 		tud_task();
 		hid_task();
-		for (uint8_t i = 0; i < 16; i++){
-			bool isPressed = !gpio_get(keysAndGPIO[i]);
-			
-			if (isPressed){
-			switch (i){
-			case 0:
-				memcpy(active_keymap,keymap1,16);
-				memcpy(active_lights,mode1Lights,16 * 3);
-				push_bitmap(mode1Lights);
-				break;
-			case 4:
-				memcpy(active_keymap,keymap2,16);
-				memcpy(active_lights,mode2Lights,16 * 3);
-				push_bitmap(mode2Lights);
-				break;
-			case 8:
-
-				break;
-			case 12:
-
-				break;
-			}
-				Add_key_input(i);
-				setKeyRGB(i,255,255,255);
-				wasPressed[i] = true;
-			}else if (!isPressed && wasPressed[i]) {
-				uint8_t *colors = active_lights[i];
-				setKeyRGB(i,colors[0],colors[1],colors[2]);
-				wasPressed[i] = false;
-			}
-		}
+		ktask();
 	}
-}
-
-auto_init_mutex(keyBufMtex);
-
-uint8_t KeyBuf[6] = {};
-uint8_t bufPtr = 0;
-
-void Add_key_input(int kb_index){
-	mutex_enter_blocking(&keyBufMtex);
-	if (bufPtr >=6) {
-		mutex_exit(&keyBufMtex);
-		return;
-	}
-	uint8_t keyCode = (active_keymap)[kb_index];
-	if (keyCode != 0){
-		KeyBuf[bufPtr++] = keyCode;
-	}
-	mutex_exit(&keyBufMtex);
-}
-
-bool Get_Key_Inputs(char buf[6]){
-	mutex_enter_blocking(&keyBufMtex);
-	if (bufPtr == 0 && KeyBuf[0] == 0){
-		mutex_exit(&keyBufMtex);
-		return false;
-	}
-	memcpy(buf,KeyBuf,6);
-	memset(KeyBuf, 0, 6);
-	bufPtr = 0;
-	mutex_exit(&keyBufMtex);
-	return true;
 }
 
 void init_keyboard_gpio(){
@@ -144,6 +315,4 @@ void init_keyboard_gpio(){
 		gpio_pull_up(target);
 	}
 }
-
-	
 

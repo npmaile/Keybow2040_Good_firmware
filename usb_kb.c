@@ -8,7 +8,6 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 #include "usb_descriptors.h"
-#include "keyinput.h"
 
 #include "usb_kb.h"
 
@@ -64,10 +63,10 @@ static void send_hid_report(uint8_t report_id)
 
     case REPORT_ID_MOUSE:
     {
-      int8_t const delta = 0;
-
+      int8_t delta[2] = {0};
+	Get_Mouse_Input(delta);
       // no button, right + down, no scroll, no pan
-      tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta, delta, 0, 0);
+      tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta[0], delta[1], 0, 0);
     }
 	default: break;
   }
@@ -122,5 +121,61 @@ uint16_t tud_hid_get_report_cb(uint8_t instance, uint8_t report_id, hid_report_t
 void tud_hid_set_report_cb(uint8_t instance, uint8_t report_id, hid_report_type_t report_type, uint8_t const* buffer, uint16_t bufsize)
 {
   (void) instance;
+}
+
+
+// nate wrote these functions in their entirety to make stuff easier
+
+auto_init_mutex(keyBufMtex);
+
+uint8_t KeyBuf[6] = {};
+uint8_t bufPtr = 0;
+
+void Add_Key_Input(int keyInput){
+	mutex_enter_blocking(&keyBufMtex);
+	if (bufPtr >=6) {
+		mutex_exit(&keyBufMtex);
+		return;
+	}
+	if (keyInput != 0){
+		KeyBuf[bufPtr++] = keyInput;
+	}
+	mutex_exit(&keyBufMtex);
+}
+
+bool Get_Key_Inputs(char buf[6]){
+	mutex_enter_blocking(&keyBufMtex);
+	if (bufPtr == 0 && KeyBuf[0] == 0){
+		mutex_exit(&keyBufMtex);
+		return false;
+	}
+	memcpy(buf,KeyBuf,6);
+	memset(KeyBuf, 0, 6);
+	bufPtr = 0;
+	mutex_exit(&keyBufMtex);
+	return true;
+}
+
+auto_init_mutex(mouseBufMtex);
+uint8_t mouse_inputs[2] = {0,0};
+
+void Add_Mouse_Input(uint8_t x, uint8_t y){
+	mutex_enter_blocking(&mouseBufMtex);
+
+	mouse_inputs[0] = x;
+	mouse_inputs[1] = y;
+
+	mutex_exit(&mouseBufMtex);
+}
+
+void Get_Mouse_Input(uint8_t buf[2]){
+	mutex_enter_blocking(&mouseBufMtex);
+
+	buf[0] = mouse_inputs[0];
+	mouse_inputs[0] = 0;
+	buf[1] = mouse_inputs[1];
+	mouse_inputs[1] = 0;
+
+	mutex_exit(&mouseBufMtex);
 }
 
