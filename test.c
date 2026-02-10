@@ -23,7 +23,7 @@ void heartFunc(int32_t in[2],double t);
 
 #define E_CONST 2.71828182845904523536
 #define PI_CONST 3.1415926
-#define KEY_DEBOUNCE_MS 10000
+#define KEY_DEBOUNCE_MS 5
 
 
 static uint8_t keysAndGPIO[16] = {
