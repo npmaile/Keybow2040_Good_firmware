@@ -50,23 +50,23 @@ static void send_hid_report(uint8_t report_id)
 
   switch(report_id)
   {
-    case REPORT_ID_KEYBOARD:
-    {
-	uint8_t keyCodes[6] = {0};
-	if (Get_Key_Inputs(keyCodes)){
-		tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, keyCodes);
-	}else{
-		tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, NULL);
-	}
-    }
-    break;
-
-    case REPORT_ID_MOUSE:
+	case REPORT_ID_KEYBOARD:
+    	{
+		uint8_t keyCodes[6] = {0};
+		if (Get_Key_Inputs(keyCodes)){
+			tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, keyCodes);
+		}else{
+			tud_hid_keyboard_report(REPORT_ID_KEYBOARD, 0, NULL);
+		}
+    	break;
+    	}
+	case REPORT_ID_MOUSE:
     {
       int8_t delta[2] = {0};
 	Get_Mouse_Input(delta);
       // no button, right + down, no scroll, no pan
       tud_hid_mouse_report(REPORT_ID_MOUSE, 0x00, delta[0], delta[1], 0, 0);
+      break;
     }
 	default: break;
   }
@@ -76,7 +76,7 @@ static void send_hid_report(uint8_t report_id)
 // tud_hid_report_complete_cb() is used to send the next report after previous one is complete
 void hid_task(void)
 {
-  const uint32_t interval_ms = 2;
+  const uint32_t interval_ms = 5;
   static uint32_t start_ms = 0;
 
   if ( board_millis() - start_ms < interval_ms) return; // not enough time
@@ -131,13 +131,22 @@ auto_init_mutex(keyBufMtex);
 uint8_t KeyBuf[6] = {};
 uint8_t bufPtr = 0;
 
+bool keyNotAlreadyQueued(uint8_t prospectiveKey){
+	for (uint8_t i = 0; i < 6; i++){
+		if (KeyBuf[i] == prospectiveKey){
+			return false;
+		}
+	}
+	return true;
+}
+
 void Add_Key_Input(int keyInput){
 	mutex_enter_blocking(&keyBufMtex);
 	if (bufPtr >=6) {
 		mutex_exit(&keyBufMtex);
 		return;
 	}
-	if (keyInput != 0){
+	if (keyInput != 0 && keyNotAlreadyQueued(keyInput)){
 		KeyBuf[bufPtr++] = keyInput;
 	}
 	mutex_exit(&keyBufMtex);
@@ -150,7 +159,7 @@ bool Get_Key_Inputs(char buf[6]){
 		return false;
 	}
 	memcpy(buf,KeyBuf,6);
-	memset(KeyBuf, 0, 6);
+	memset(KeyBuf, 0, 6* sizeof(uint8_t));
 	bufPtr = 0;
 	mutex_exit(&keyBufMtex);
 	return true;
