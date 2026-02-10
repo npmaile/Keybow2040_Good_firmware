@@ -23,6 +23,7 @@ void heartFunc(int32_t in[2],double t);
 
 #define E_CONST 2.71828182845904523536
 #define PI_CONST 3.1415926
+#define KEY_DEBOUNCE_MS 5
 
 
 static uint8_t keysAndGPIO[16] = {
@@ -31,6 +32,25 @@ static uint8_t keysAndGPIO[16] = {
 	20,16,12,8,
 	21,17,13,9
 };
+
+absolute_time_t lastPressed[16] = {
+	0,0,0,0,
+	0,0,0,0,
+	0,0,0,0,
+	0,0,0,0
+};
+
+bool is_pressed(uint8_t keyIndex, absolute_time_t timeNow){
+	// check to see if the last time it's pressed is less than KEY_DEBOUNCE_MS in the past
+	if (absolute_time_diff_us(lastPressed[keyIndex],timeNow) < KEY_DEBOUNCE_MS * 1000){
+		return true;
+	}
+	if (gpio_get(keysAndGPIO[keyIndex])){
+		return false;
+	}
+	lastPressed[keyIndex] = timeNow;
+	return true;
+}
 
 uint8_t keymap1[16] = {
 	0,HID_KEY_7,HID_KEY_8,HID_KEY_9,
@@ -88,8 +108,9 @@ void setup_keyboard_task2(){
 }
 
 void keyboard_task(){
+	absolute_time_t timeNow = get_absolute_time();
 	for (uint8_t i = 0; i < 16; i++){
-		bool isPressed = !gpio_get(keysAndGPIO[i]);
+		bool isPressed = is_pressed(i, timeNow);
 			
 		if (isPressed){
 			switch (i){
@@ -123,42 +144,39 @@ void setup_mouse_func(){
 	ktask = &mouse_task;
 }
 
-bool keyPressed(int8_t key){
-	return !gpio_get(keysAndGPIO[key]);
-}
-
 uint64_t t_0 = 0;
 double current_dir_radians = 0;
 double speed = 0;
 void mouse_task(){
-	uint64_t t_1 =  to_us_since_boot(get_absolute_time());
+	absolute_time_t now = get_absolute_time();
+	uint64_t t_1 =  to_us_since_boot(now);
 	if ((t_1 - t_0) < 10000){
 		return;
 	}
 	t_0 = t_1;
 	// key handling
-	if (keyPressed(0)) {
+	if (is_pressed(0,now)) {
 		setup_keyboard_task1();
 		return;
 	}
-	if (keyPressed(4)){
+	if (is_pressed(4,now)){
 		setup_keyboard_task2();
 		return;
 	}
-	if (keyPressed(8)){
+	if (is_pressed(8,now)){
 		setup_mouse_jiggler();
 		return;
 	}
-	if (keyPressed(10)&& speed < 128){
+	if (is_pressed(10,now)&& speed < 128){
 		speed += .1 ;
 	}
-	if (keyPressed(13)){
+	if (is_pressed(13,now)){
 		current_dir_radians += .01*PI_CONST;
 	}
-	if (keyPressed(14) && speed > -128){
+	if (is_pressed(14,now) && speed > -128){
 		speed -= .1;
 	}
-	if (keyPressed(15)){
+	if (is_pressed(15,now)){
 		current_dir_radians -= .01*PI_CONST;
 	}
 	// mouse input
@@ -184,7 +202,8 @@ void setup_mouse_jiggler(){
 double SCALING_FACTOR = 300;
 double TIME_SLOW_FACTOR = 100000;
 void mouse_jiggler_task(){
-	uint64_t t_1 =  to_us_since_boot(get_absolute_time());
+	absolute_time_t now = get_absolute_time();
+	uint64_t t_1 =  to_us_since_boot(now);
 	if ((t_1 - t_0) < 10000){
 		return;
 	}
@@ -193,7 +212,7 @@ void mouse_jiggler_task(){
 	static int32_t mouse_y = 0;
 
 	for (uint8_t i = 0; i < 16; i++){
-		bool isPressed = !gpio_get(keysAndGPIO[i]);
+		bool isPressed = is_pressed(i,now);
 		if (!isPressed){
 			continue;
 		}
