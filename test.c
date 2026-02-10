@@ -293,13 +293,7 @@ int main() {
 	init_keyboard_gpio();
 	tud_init(BOARD_TUD_RHPORT);
 
-	for (uint8_t i = 0; i < 144; i++){
-		sleep_ms(10);
-		setPixel(i,0,0);
-	}
-	memcpy(active_keymap,keymap1,16);
-	push_bitmap(mode1Lights);
-	ktask = &keyboard_task;
+	setup_keyboard_task1();
 	while (true) {
 		tud_task();
 		hid_task();
