@@ -5,6 +5,7 @@
 
 #include "led.h"
 #include <pico/double.h>
+#include <pico/multicore.h>
 #include <pico/stdio.h>
 
 void mouse_jiggler_task();
@@ -110,11 +111,11 @@ void keyboard_task() {
         break;
       }
       Add_Key_Input(active_keymap[i]);
-      setKeyRGB(i, 255, 255, 255);
+      sendKeyRGB((LightCMD){i, 255, 255, 255});
       wasPressed[i] = true;
     } else if (!isPressed && wasPressed[i]) {
       uint8_t *colors = active_lights[i];
-      setKeyRGB(i, colors[0], colors[1], colors[2]);
+      sendKeyRGB((LightCMD){i, colors[0], colors[1], colors[2]});
       wasPressed[i] = false;
     }
   }
@@ -171,7 +172,7 @@ void mouse_task() {
     uint8_t r = floor(255 * sin(t_2 + (i * .01)));
     uint8_t g = floor(255 * sin(t_2 + (i * .80)));
     uint8_t b = floor(255 * sin(t_2 + (i * .50)));
-    setKeyRGB(arrowKeys[i], r, g, b);
+    sendKeyRGB((LightCMD){arrowKeys[i], r, g, b});
   }
 }
 
@@ -256,7 +257,7 @@ void mouse_jiggler_task() {
     uint8_t g = floor(255 * sin(t + (i * .80)));
     uint8_t b = floor(255 * sin(t + (i * .50)));
 
-    setKeyRGB(i, r, b, g);
+    sendKeyRGB((LightCMD){i, r, b, g});
   }
 
   int32_t xy[2] = {0};
@@ -294,7 +295,7 @@ int8_t Squash32bit(int32_t in) {
 
 int main() {
   stdio_init_all();
-  led_driver_init();
+  multicore_launch_core1(led_driver_init);
   init_keyboard_gpio();
   tud_init(BOARD_TUD_RHPORT);
 
