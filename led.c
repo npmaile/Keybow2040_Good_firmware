@@ -1,7 +1,9 @@
 #include "led.h"
 #include "hardware/gpio.h"
 #include "hardware/i2c.h"
+#include "pico/multicore.h"
 #include "stdint.h"
+#include <string.h>
 
 #define LED_DRIVER_BUS_ADDRESS 0x74
 
@@ -21,7 +23,6 @@
 
 #define ISSI_COMMANDREGISTER 0xFD
 #define ISSI_BANK_FUNCTIONREG 0x0B
-
 // list of all the pixels with their red, green, and blue
 uint8_t lookup[16][3] = {
     {120, 88, 104}, // 0, 0
@@ -88,11 +89,24 @@ void led_driver_init() {
   for (uint8_t i = 0; i < 144; i++) {
     setPixel(i, 0, 0);
   }
+  LightCMD toSet;
+  uint32_t data;
+  while (true) {
+    data = multicore_fifo_pop_blocking();
+    memcpy(&toSet, &data, sizeof(LightCMD));
+    setKeyRGB(toSet.index, toSet.r, toSet.g, toSet.b);
+  }
 }
 
 void push_bitmap(uint8_t array_of_lights[][3]) {
   for (uint8_t i = 0; i < 16; i++) {
     uint8_t *ptr = array_of_lights[i];
-    setKeyRGB(i, ptr[0], ptr[1], ptr[2]);
+    sendKeyRGB((LightCMD){i, ptr[0], ptr[1], ptr[2]});
   }
+}
+
+void sendKeyRGB(LightCMD cmd) {
+  static uint32_t buf;
+  memcpy(&buf, &cmd, sizeof(LightCMD));
+  multicore_fifo_push_blocking(buf);
 }
