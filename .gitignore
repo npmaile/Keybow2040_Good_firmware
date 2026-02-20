@@ -1,2 +1,3 @@
 build/*
 2040fw.uf2
+.cache/*
