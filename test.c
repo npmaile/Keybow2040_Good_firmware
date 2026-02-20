@@ -6,6 +6,7 @@
 #include "hardware/gpio.h"
 #include "bsp/board_api.h"
 #include "tusb.h"
+#include "usb_kb.h"
 
 #include "usb_descriptors.h"
 #include "led.h"
