@@ -53,22 +53,12 @@ uint8_t mode1Lights[16][3] = {
     {0, 0, 255}, {0, 255, 0}, {0, 255, 0}, {0, 255, 0},
     {0, 0, 255}, {255, 0, 0}, {0, 255, 0}, {255, 255, 0}};
 
-uint8_t keymap2[16] = {0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       0,
-                       HID_KEY_ARROW_UP,
-                       0,
-                       0,
-                       HID_KEY_ARROW_LEFT,
-                       HID_KEY_ARROW_DOWN,
-                       HID_KEY_ARROW_RIGHT};
+// clang-format off
+uint8_t keymap2[16] = {0,0,0,0,
+                       0,0,0,0,
+                       0,0,HID_KEY_ARROW_UP,0,
+                       0,HID_KEY_ARROW_LEFT,HID_KEY_ARROW_DOWN,HID_KEY_ARROW_RIGHT};
+// clang-format on
 
 uint8_t mode2Lights[16][3] = {
     {0, 0, 255}, {0, 0, 0},       {0, 0, 0},       {0, 0, 0},
