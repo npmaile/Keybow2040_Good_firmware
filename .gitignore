@@ -1,7 +1,5 @@
 build/*
 2040fw.uf2
-
-
-# Added by cargo
-
 /target
+.cache/*
+.DS_Store/*

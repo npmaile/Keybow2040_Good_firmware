@@ -9,4 +9,3 @@ COPY . /root/Keybow2040_Good_firmware
 RUN PICO_SDK_PATH=/root/pico-sdk cmake ./Keybow2040_Good_firmware/
 RUN make
 
-
