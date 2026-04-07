@@ -10,9 +10,7 @@ dependencies = [
  "cortex-m-rt",
  "embedded-hal 1.0.0",
  "panic-halt",
- "rp-hal",
  "rp-pico",
- "rp2040-boot2",
 ]
 
 [[package]]
@@ -326,18 +324,6 @@ name = "rand_core"
 version = "0.6.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
-
-[[package]]
-name = "rp-hal"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c4972a47cba1f6a762efb9d3df5b0dc9d63a92346d3ef52af2f9429e9676b28"
-dependencies = [
- "bare-metal",
- "cortex-m",
- "embedded-hal 0.2.7",
- "vcell",
-]
 
 [[package]]
 name = "rp-pico"
